@@ -6,6 +6,8 @@
 
 # JKinco Tools
 
+> **English overview** · A small collection of automation scripts for repetitive day-to-day operations, with import result logs.
+
 轻量自动化脚本与工具集合，解决日常重复操作。
 
 ## 内容
