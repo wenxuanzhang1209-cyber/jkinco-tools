@@ -22,6 +22,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -122,14 +123,47 @@ class Configuration(unittest.TestCase):
         )
 
     def test_no_proxy_means_respect_the_environment(self):
-        """不设代理时要用默认 opener。
+        """不设 UPSTREAM_PROXY 时，只能使用系统环境里的代理，不能自带一个。
 
-        空的 ProxyHandler 不等于「不用代理」，它等于「屏蔽所有代理」，
-        连系统的 http_proxy 也会被忽略。
+        第一版断言「opener.handlers 里必须有 ProxyHandler」。那在我这台
+        配了系统代理的机器上成立，在 CI runner 上不成立 —— urllib 的
+        add_handler 只会收录带 *_open 方法的处理器，而 ProxyHandler 的
+        方法是按每个代理动态生成的：一个代理都没有，它就没有方法，
+        于是压根不会出现在 handlers 里。
+
+        测试又一次编码了一个只在我这儿为真的前提。改成问真正该问的问题：
+        这个 opener 会不会强塞一个我们自己写死的代理。
         """
-        opener = script.proxy_opener()
-        proxies = [h for h in opener.handlers if type(h).__name__ == "ProxyHandler"]
-        self.assertTrue(proxies, "应当保留默认的 ProxyHandler 以尊重系统环境变量")
+        original = script.PROXY
+        script.PROXY = ""
+        try:
+            opener = script.proxy_opener()
+            installed = [handler.proxies for handler in opener.handlers
+                         if type(handler).__name__ == "ProxyHandler"]
+        finally:
+            script.PROXY = original
+
+        for proxies in installed:
+            self.assertEqual(
+                proxies, urllib.request.getproxies(),
+                "不设 UPSTREAM_PROXY 时，代理只能来自系统环境",
+            )
+
+    def test_an_explicit_proxy_is_actually_used(self):
+        """设了 UPSTREAM_PROXY 就必须真的走它，否则这个开关是假的。"""
+        original = script.PROXY
+        script.PROXY = "http://proxy.invalid:9999"
+        try:
+            opener = script.proxy_opener()
+            handlers = [handler for handler in opener.handlers
+                        if type(handler).__name__ == "ProxyHandler"]
+            self.assertTrue(handlers, "显式设了代理，就该装上 ProxyHandler")
+            self.assertEqual(handlers[0].proxies.get("http"),
+                             "http://proxy.invalid:9999")
+            self.assertEqual(handlers[0].proxies.get("https"),
+                             "http://proxy.invalid:9999")
+        finally:
+            script.PROXY = original
 
 
 if __name__ == "__main__":
