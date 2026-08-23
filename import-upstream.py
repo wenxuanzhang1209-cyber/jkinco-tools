@@ -14,15 +14,27 @@ import urllib.parse
 import urllib.request
 
 ROOT = os.path.abspath(os.path.dirname(__file__))
-TREE_JSON = "/tmp/opencode-tree.json"
-OWNER = "anomalyco"
-REPO = "opencode"
-BRANCH = "dev"
-PROXY = "http://127.0.0.1:7897"
+TREE_JSON = os.environ.get("TREE_JSON", "/tmp/opencode-tree.json")
+OWNER = os.environ.get("UPSTREAM_OWNER", "anomalyco")
+REPO = os.environ.get("UPSTREAM_REPO", "opencode")
+BRANCH = os.environ.get("UPSTREAM_BRANCH", "dev")
+
+# 代理默认关闭。这里原先写死成 http://127.0.0.1:7897 —— 那是我本机
+# 那个代理的端口，别人 clone 下来跑，每一次请求都会连到一个不存在的
+# 本地端口上，而失败信息是「连接被拒绝」，看不出跟代理有关。
+#
+# 需要走代理时设 UPSTREAM_PROXY；不设就直连，urllib 仍会尊重系统的
+# http_proxy/https_proxy 环境变量。
+PROXY = os.environ.get("UPSTREAM_PROXY", "")
 UA = {"User-Agent": "jkinco-upstream-import/0.1"}
 
 
 def proxy_opener():
+    if not PROXY:
+        # 空的 ProxyHandler 不等于「不用代理」——它等于「不要用任何代理」，
+        # 会把系统的 http_proxy 也一起屏蔽掉。想直连又尊重系统设置，
+        # 就得用默认 opener。
+        return urllib.request.build_opener()
     handler = urllib.request.ProxyHandler({"http": PROXY, "https": PROXY})
     return urllib.request.build_opener(handler)
 

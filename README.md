@@ -2,6 +2,7 @@
   <a href="https://github.com/wenxuanzhang1209-cyber/jkinco-tools/actions/workflows/ci.yml"><img src="https://github.com/wenxuanzhang1209-cyber/jkinco-tools/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
   <img src="https://img.shields.io/github/license/wenxuanzhang1209-cyber/jkinco-tools?style=flat-square" alt="License" />
   <img src="https://img.shields.io/badge/Python-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/tests-9%20passing-3fb950?style=flat-square" alt="Tests" />
   <img src="https://img.shields.io/badge/dependencies-none-3fb950?style=flat-square" alt="No dependencies" />
 </p>
 

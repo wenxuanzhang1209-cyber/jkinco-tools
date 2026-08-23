@@ -6,11 +6,41 @@ on:
   pull_request:
 
 jobs:
-  python-syntax:
+  test:
+    name: Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - run: python -m py_compile import-upstream.py
+          python-version: "3.12"
+
+      # 这里原先只有一句 `python -m py_compile import-upstream.py` ——
+      # 一个连 import 都不会执行的检查。而这个仓库的说明是「会自检的脚本」，
+      # 语法正确和「校验逻辑是对的」之间隔着整个 README。
+      #
+      # 测试只用标准库，所以这里不需要 pip install 任何东西 ——
+      # README 里「zero dependencies」那句话在 CI 里也成立。
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      # 徽章上写着一个具体数字，过期了不会有任何报错。
+      - name: Badge count matches reality
+        run: |
+          set -uo pipefail
+          total=$(python -m unittest discover -s tests 2>&1 \
+                  | grep -oE '^Ran [0-9]+ test' | grep -oE '[0-9]+')
+          claimed=$(grep -oE 'badge/tests-[0-9]+%20passing' README.md \
+                    | grep -oE '[0-9]+' | head -1)
+          echo "README 徽章: ${claimed:-未找到}   实际跑过: ${total:-0}"
+          if [ -z "${total:-}" ] || [ "$total" -eq 0 ]; then
+            echo "::error::没能数出测试数"; exit 1
+          fi
+          if [ -z "${claimed:-}" ]; then
+            echo "::warning::README 里没有测试数徽章，跳过核对"; exit 0
+          fi
+          if [ "$claimed" != "$total" ]; then
+            echo "::error::README 徽章写着 $claimed 个测试，实际跑了 $total 个。"
+            exit 1
+          fi
+          echo "一致。"
